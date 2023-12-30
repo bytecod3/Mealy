@@ -1,0 +1,10 @@
+../Core/Src/main.c:103:6:myPrintf	1
+../Core/Src/main.c:120:5:main	4
+../Core/Src/main.c:261:6:SystemClock_Config	3
+../Core/Src/main.c:311:13:MX_ETH_Init	2
+../Core/Src/main.c:360:13:MX_I2C1_Init	4
+../Core/Src/main.c:408:13:MX_SPI4_Init	2
+../Core/Src/main.c:448:13:MX_USART3_UART_Init	2
+../Core/Src/main.c:483:13:MX_USB_OTG_FS_PCD_Init	2
+../Core/Src/main.c:518:13:MX_GPIO_Init	1
+../Core/Src/main.c:587:6:Error_Handler	1
