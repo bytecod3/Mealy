@@ -42,8 +42,8 @@ uint8_t MPU6050_Initialise(MPU6050* dev, I2C_HandleTypeDef* i2cHandle){
     	reg_data = 0x00;
     	MPU6050_WriteRegister(dev, GYRO_CONFIG, &reg_data);
 
-    	// configure the accelerometer to max +- 2g
-    	reg_data = 0x00;
+    	// configure the accelerometer to max +- 16g
+    	reg_data = 0x18;
     	MPU6050_WriteRegister(dev, ACCEL_CONFIG, &reg_data);
 
     	status = 0; // successful initialization
@@ -152,11 +152,12 @@ void MPU6050_ReadAcceleration(MPU6050* dev){
 	int16_t accel_z_raw = (int16_t) (data[4]<<8 | data[5]);
 
 	// update the struct
-	// here, the accelerometer is set for max 2g,
-	// so we divide the raw value by 16384
-	dev->acc_mps2[0] = accel_x_raw / 16384.0;
-	dev->acc_mps2[1] = accel_y_raw / 16384.0;
-	dev->acc_mps2[2] = accel_z_raw / 16384.0;
+	// here, the accelerometer is set for max 16g,
+	// so we divide the raw value by 2048, as listed in the datasheet
+	// remember to multiply this value by 9.81 to convert to m/s^2
+	dev->acc_mps2[0] = accel_x_raw / 2048.0;
+	dev->acc_mps2[1] = accel_y_raw / 2048.0;
+	dev->acc_mps2[2] = accel_z_raw / 2048.0;
 
 }
 
@@ -176,6 +177,7 @@ void MPU6050_ReadGyroscope(MPU6050* dev){
 	int16_t gyro_z_raw = (int16_t) (data[4]<<8 | data[5]);
 
 	// update mpu 6050 struct
+	// we divide by 131 to convert gyro values to deg/sec
 	dev->gyro_data[0] = gyro_x_raw / 131.0; // from datasheet
 	dev->gyro_data[1] = gyro_y_raw / 131.0;
 	dev->gyro_data[2] = gyro_z_raw / 131.0;

@@ -120,6 +120,7 @@ uint8_t MPU6050_Initialise(MPU6050* dev, I2C_HandleTypeDef* i2cHandle);
 HAL_StatusTypeDef MPU6050_ReadTemperature(MPU6050* dev);
 void MPU6050_ReadTemperatureTest(MPU6050* dev);
 void MPU6050_ReadAcceleration(MPU6050* dev);
+void MPU6050_ReadGyroscope(MPU6050* dev);
 
 /* Register read function prototypes  */
 HAL_StatusTypeDef MPU6050_ReadRegister(MPU6050* dev, uint8_t reg, uint8_t* data);

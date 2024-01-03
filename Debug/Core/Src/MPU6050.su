@@ -5,4 +5,4 @@
 ../Core/Src/MPU6050.c:101:19:MPU6050_ReadTemperature	24	static
 ../Core/Src/MPU6050.c:120:6:MPU6050_ReadTemperatureTest	24	static
 ../Core/Src/MPU6050.c:140:6:MPU6050_ReadAcceleration	48	static
-../Core/Src/MPU6050.c:169:6:MPU6050_ReadGyroscope	48	static
+../Core/Src/MPU6050.c:170:6:MPU6050_ReadGyroscope	48	static
