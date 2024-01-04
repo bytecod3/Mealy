@@ -1,0 +1,12 @@
+../Core/Src/main.c:132:6:set_last_read_angle_data	40	static
+../Core/Src/main.c:159:6:callibrate_sensor	40	static
+../Core/Src/main.c:233:6:myPrintf	16	static
+../Core/Src/main.c:250:5:main	168	static
+../Core/Src/main.c:451:6:SystemClock_Config	88	static
+../Core/Src/main.c:501:13:MX_ETH_Init	8	static
+../Core/Src/main.c:550:13:MX_I2C1_Init	8	static
+../Core/Src/main.c:598:13:MX_SPI4_Init	8	static
+../Core/Src/main.c:638:13:MX_USART3_UART_Init	8	static
+../Core/Src/main.c:673:13:MX_USB_OTG_FS_PCD_Init	8	static
+../Core/Src/main.c:708:13:MX_GPIO_Init	56	static
+../Core/Src/main.c:777:6:Error_Handler	4	static,ignoring_inline_asm
