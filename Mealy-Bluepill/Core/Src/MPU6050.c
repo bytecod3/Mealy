@@ -112,6 +112,7 @@ HAL_StatusTypeDef MPU6050_ReadTemperature(MPU6050* dev){
 
     // convert to deg C
     // offset at 35 degC = -521, slope = 340 LSB/degC
+    // TODO: use the correct forumla for temperature
     dev->temp_C = 0.0029411 * (float) ((raw_temp + 521) + 35);
 
     return 0; // TODO: return correct status here
@@ -177,9 +178,9 @@ void MPU6050_ReadGyroscope(MPU6050* dev){
 	int16_t gyro_z_raw = (int16_t) (data[4]<<8 | data[5]);
 
 	// update mpu 6050 struct
-	// we divide by 131 to convert gyro values to deg/sec
-	dev->gyro_data[0] = gyro_x_raw / 131.0; // from datasheet
-	dev->gyro_data[1] = gyro_y_raw / 131.0;
-	dev->gyro_data[2] = gyro_z_raw / 131.0;
+	// we divide by 250 to convert gyro values to deg/sec
+	dev->gyro_data[0] = gyro_x_raw / 250.0; // from datasheet
+	dev->gyro_data[1] = gyro_y_raw / 250.0;
+	dev->gyro_data[2] = gyro_z_raw / 250.0;
 
 }

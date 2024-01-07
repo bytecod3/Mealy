@@ -63,7 +63,7 @@ char data[40] = ""; // sd card test char array
 // create accelerometer struct
 MPU6050 acc;
 MPU6050* p_acc = &acc; // pointer to accelerometer
-float x_acc_ms, y_acc_ms, z_acc_ms;
+float x_acc_ms, y_acc_ms, z_acc_ms; // acceleration converted to m/s^2
 
 // struct to hold both accelerometer data and the gyroscope data
 typedef struct {
@@ -92,7 +92,7 @@ FilteredAngles filtered_angles;
 FilteredAngles* p_filtered_angles = &filtered_angles;
 
 // variables to store the rotation angles of the sensor
-unsigned long 	last_read_time;
+unsigned long 	last_read_time = 0;
 float			last_x_angle; // filtered angles
 float 			last_y_angle;
 float			last_z_angle;
@@ -200,6 +200,14 @@ static void MX_TIM2_Init(void);
 void myPrintf(const char *fmt, ...); // function to send formatted data over serial
 void setDutyCycle(int dutyCycle); // function to set PWM duty cycle
 
+//motor drive functions
+void moveForward();
+void moveBackward();
+void moveLeft();
+void moveRight();
+void stop();
+void start();
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -219,6 +227,31 @@ void myPrintf(const char* fmt, ...){
 void setDutyCycle(int dutyCycle){
 	TIM2->CCR1 = dutyCycle * 100; // 100? ARR is set to 10000, check reference no. 1 for formula
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+}
+
+//-------------------motor drive functions---------------------------
+void moveForward(){
+	// move the motors forward
+	HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_RESET);
+
+	HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_RESET);
+
+}
+
+void moveBackward(){
+	// move the motors backward
+	HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_SET);
+
+	HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_SET);
+}
+
+void start(){
+	// start the robot in forward direction - for testing
+	moveForward();
 }
 
 /* USER CODE END 0 */
@@ -257,6 +290,13 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
+  // start the timers
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); // start channel 1
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2); // start channel 2
+
+  // start the motors at 50% speed
+  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1, 750); //first motor 75% voltage
+  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 750); //second motor 75% voltage
 
   /*-------------------------INERTIAL MEASUREMENT UNIT FUNCTIONS--------------------------------*/
   MPU6050_Initialise(&acc, &hi2c1);// TODO: check init status here
@@ -300,7 +340,7 @@ int main(void)
 	  //	);
 
 
-	  	/* get orientation - tilt on x and y axis */
+	  	/*-------------- get orientation - tilt on x and y axis */
 
 	  	// get the time of reading for rotation computations
 	  	unsigned long t_now = HAL_GetTick();
@@ -316,7 +356,7 @@ int main(void)
 	  	p_SensorData->gyro_z = p_acc->gyro_data[2] - base_z_gyro;
 
 	  	float accel_angle_y = atan(-1 * p_SensorData->x_acc/sqrt(pow(p_SensorData->y_acc, 2) + pow(p_SensorData->z_acc, 2))) * RADS_TO_DEG;
-	  	float accel_angle_x = atan(p_SensorData->y_acc / sqrt(pow(p_SensorData->x_acc, 2) + pow(p_SensorData->z_acc, 2) )) * RADS_TO_DEG;
+	  	float accel_angle_x = atan(p_SensorData->y_acc / sqrt( pow(p_SensorData->x_acc, 2) + pow(p_SensorData->z_acc, 2) )) * RADS_TO_DEG;
 	  	float accel_angle_z = 0;
 
 	  	// compute the filtered gyro angles
@@ -331,7 +371,8 @@ int main(void)
 	  	p_filtered_angles->z_angle_estimate = gyro_angle_z; // accelerometer doesn't give z-angle
 
 	  	// update the saved data with the latest values
-	  	set_last_read_angle_data(t_now,
+	  	set_last_read_angle_data(
+	  			t_now,
 	  			p_filtered_angles->x_angle_estimate,
 	  			p_filtered_angles->y_angle_estimate,
 	  			p_filtered_angles->z_angle_estimate,
@@ -341,18 +382,32 @@ int main(void)
 	  			);
 
 	  	// construct debug data string
+//	  	sprintf(mpu_data,
+//	  			"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f \r\n",
+//	  			accel_angle_x,
+//	  			accel_angle_y,
+//	  			accel_angle_z,
+//	  			gyro_angle_x,
+//	  			gyro_angle_y,
+//	  			gyro_angle_z,
+//	  			p_filtered_angles->x_angle_estimate,
+//	  			p_filtered_angles->y_angle_estimate,
+//	  			p_filtered_angles->z_angle_estimate
+//	  	);
+
+	  	// according to how i've mounted the MPU, i'm interested in x-axis angle
 	  	sprintf(mpu_data,
-	  			"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f \r\n",
-	  			accel_angle_x,
-	  			accel_angle_y,
-	  			accel_angle_z,
-	  			gyro_angle_x,
-	  			gyro_angle_y,
-	  			gyro_angle_z,
-	  			p_filtered_angles->x_angle_estimate,
-	  			p_filtered_angles->y_angle_estimate,
-	  			p_filtered_angles->z_angle_estimate
-	  	);
+	  			"x: %.2f, y: %.2f, dt:%.2f \r\n",
+				accel_angle_x,
+				accel_angle_y,
+				dt
+	  			);
+
+	  	// run motors
+//	  	moveForward();
+//	  	HAL_Delay(200);
+//	  	moveBackward();
+//	  	HAL_Delay(200);
 
 	  // send data over USART3 TODO: change USART channel for BluePill
 	  HAL_UART_Transmit(&huart1, mpu_data, sizeof(mpu_data), 10000);
