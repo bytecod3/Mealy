@@ -8,16 +8,18 @@
 #ifndef INC_PID_H_
 #define INC_PID_H_
 
+#include <stdint.h>
+
 
 /**
  * struct to hold PID values
  */
 typedef struct {
 	float kp;					// proportional constant
-	float ki;					// intergral constant
+	float ki;					// integral constant
 	float kd;					// derivative constant
 	int16_t last_error;			// last error computed
-	int32_t error_intergral;	// integal error
+	int32_t error_intergral;	// integral error
 	int16_t pid_output;			// corrected value output
 
 } pid_instance;
