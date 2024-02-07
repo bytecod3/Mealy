@@ -44,6 +44,9 @@
 // PID defines
 #define MOTOR_REFERENCE 200	// define the motor reference speed
 
+// motor defines
+#define DC_MOTOR_1 0
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -234,6 +237,11 @@ void setDutyCycle(int dutyCycle){
 }
 
 //-------------------motor drive functions---------------------------
+
+// init DC motor
+motor_init(DC_MOTOR_1);
+
+
 void moveForward(){
 	// move the motors forward
 	HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_SET);
@@ -244,19 +252,19 @@ void moveForward(){
 
 }
 
-void moveBackward(){
-	// move the motors backward
-	HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_SET);
+//void moveBackward(){
+//	// move the motors backward
+//	HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_RESET);
+//	HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_SET);
+//
+//	HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_RESET);
+//	HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_SET);
+//}
 
-	HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_SET);
-}
-
-void start(){
-	// start the robot in forward direction - for testing
-	moveForward();
-}
+//void start(){
+//	// start the robot in forward direction - for testing
+//	moveForward();
+//}
 
 /* USER CODE END 0 */
 
@@ -290,7 +298,7 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
-  MX_TIM2_Init();
+  //MX_TIM2_Init(); // done in the motor.c file
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
@@ -413,7 +421,7 @@ int main(void)
 	  	// run motors
 	  	moveForward();
 	  	HAL_Delay(200);
-	  	moveBackward();
+	  	reverse();
 	  	HAL_Delay(200);
 
 	  // send data over USART3 TODO: change USART channel for BluePill
