@@ -22,8 +22,20 @@ const MOTOR_ConfigTypeDef motor_config_params[MOTOR_UNITS] =
 				MOTOR_F_PWM,	// pwm period
 				MOTOR_PWM_RES	// pwm resolution
 
-		}
+		},
 
 		// dc motor 2 configurations
+		{
+				GPIOB,			// in1 port
+				GPIOB,			// in2 port
+				GPIO_PIN_14,	// in1 pin
+				GPIO_PIN_15,	// in2 pin
+				TIM2,			// timer used
+				TIM_CHANNEL_2,	// timer channel
+				8,				// clock freq (MHz)
+				MOTOR_F_PWM,	// pwm period
+				MOTOR_PWM_RES	// pwm resolution
+
+		}
 
 };

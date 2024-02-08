@@ -44,7 +44,7 @@ void motor_init(uint8_t motor_instance) {
 		__HAL_RCC_GPIOE_CLK_ENABLE();
 	}
 
-	GPIO_InitStruct.Pin = motor_config_params[motor_intance].IN1_PIN;
+	GPIO_InitStruct.Pin = motor_config_params[motor_instance].IN1_PIN;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(motor_config_params[motor_instance].IN1_GPIO, &GPIO_InitStruct);
@@ -67,7 +67,7 @@ void motor_init(uint8_t motor_instance) {
 	ARR_Value -= 2;
 
 	/* configure the DC motor PWM timer channel */
-	htim.Instance = DC_MOTOR_CfgParam[au8_MOTOR_Instance].TIM_Instance;
+	htim.Instance = motor_config_params[motor_instance].TIM_Instance;
 	htim.Init.Prescaler = PSC_Value;
 	htim.Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim.Init.Period = ARR_Value;
@@ -84,7 +84,7 @@ void motor_init(uint8_t motor_instance) {
 	sConfigOC.Pulse = 0;
 	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
 	sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-	HAL_TIM_PWM_ConfigChannel(&htim, &sConfigOC, DC_MOTOR_CfgParam[au8_MOTOR_Instance].PWM_TIM_CH);
+	HAL_TIM_PWM_ConfigChannel(&htim, &sConfigOC, motor_config_params[motor_instance].PWM_TIM_CH);
 	HAL_TIM_MspPostInit(&htim);
 
 	/* start the PWM channel */
@@ -96,19 +96,90 @@ void motor_init(uint8_t motor_instance) {
 
 void motor_start(uint8_t motor_instance, uint8_t dir, uint8_t speed) {
 
+	/* write to the two direction control pins */
+	if(dir == CW) {
+		HAL_GPIO_WritePin(motor_config_params[motor_instance].IN1_GPIO, motor_config_params[motor_instance].IN1_PIN, 1);
+		HAL_GPIO_WritePin(motor_config_params[motor_instance].IN2_GPIO, motor_config_params[motor_instance].IN2_PIN, 0);
+	} else if (dir == CCW) {
+		HAL_GPIO_WritePin(motor_config_params[motor_instance].IN1_GPIO, motor_config_params[motor_instance].IN1_PIN, 0);
+		HAL_GPIO_WritePin(motor_config_params[motor_instance].IN2_GPIO, motor_config_params[motor_instance].IN2_PIN, 1);
+	}
 
+	/* write speed to the PWM CH Duty Cycle register */
+	if(motor_config_params[motor_instance].PWM_TIM_CH == TIM_CHANNEL_1)
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR1 = speed;
+	}
+	else if(motor_config_params[motor_instance].PWM_TIM_CH == TIM_CHANNEL_2)
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR2 = speed;
+	}
+	else if(motor_config_params[motor_instance].PWM_TIM_CH == TIM_CHANNEL_3)
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR3 = speed;
+	}
+	else
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR4 = speed;
+	}
 
 }
 
-void motor_set_speed() {
+void motor_set_speed(uint8_t motor_instance, uint16_t speed) {
+
+	/* write speed to the PWM CH Duty Cycle register */
+	if(motor_config_params[motor_instance].PWM_TIM_CH == TIM_CHANNEL_1)
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR1 = speed;
+	}
+	else if(motor_config_params[motor_instance].PWM_TIM_CH == TIM_CHANNEL_2)
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR2 = speed;
+	}
+	else if(motor_config_params[motor_instance].PWM_TIM_CH == TIM_CHANNEL_3)
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR3 = speed;
+	}
+	else
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR4 = speed;
+	}
 
 }
 
-void motor_set_dir() {
+void motor_set_dir(uint8_t motor_instance, uint8_t dir) {
+	/* write to the two direction control pins */
+	if(dir == CW) {
+		HAL_GPIO_WritePin(motor_config_params[motor_instance].IN1_GPIO, motor_config_params[motor_instance].IN1_PIN, 1);
+		HAL_GPIO_WritePin(motor_config_params[motor_instance].IN2_GPIO, motor_config_params[motor_instance].IN2_PIN, 0);
+	} else if (dir == CCW) {
+		HAL_GPIO_WritePin(motor_config_params[motor_instance].IN1_GPIO, motor_config_params[motor_instance].IN1_PIN, 0);
+		HAL_GPIO_WritePin(motor_config_params[motor_instance].IN2_GPIO, motor_config_params[motor_instance].IN2_PIN, 1);
+	}
 
 }
 
-void motor_stop() {
+void motor_stop(uint8_t motor_instance) {
+
+	HAL_GPIO_WritePin(motor_config_params[motor_instance].IN1_GPIO, motor_config_params[motor_instance].IN1_PIN, 0);
+	HAL_GPIO_WritePin(motor_config_params[motor_instance].IN2_GPIO, motor_config_params[motor_instance].IN2_PIN, 0);
+
+	if(motor_config_params[motor_instance].PWM_TIM_CH == TIM_CHANNEL_1)
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR1 = 0;
+	}
+	else if(motor_config_params[motor_instance].PWM_TIM_CH == TIM_CHANNEL_2)
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR2 = 0;
+	}
+	else if(motor_config_params[motor_instance].PWM_TIM_CH == TIM_CHANNEL_3)
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR3 = 0;
+	}
+	else
+	{
+		motor_config_params[motor_instance].TIM_Instance->CCR4 = 0;
+	}
 
 }
 

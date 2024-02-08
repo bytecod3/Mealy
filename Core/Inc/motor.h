@@ -8,6 +8,8 @@
 #ifndef INC_MOTOR_H_
 #define INC_MOTOR_H_
 
+#include <stm32f1xx_hal.h>
+
 /* motor rotation directions */
 #define CW 0
 #define CCW 1
@@ -17,7 +19,7 @@
 #define MOTOR_F_PWM		500
 
 /* number of motors to be used */
-#define MOTOR_UNITS 1
+#define MOTOR_UNITS 2
 
 typedef struct {
 	GPIO_TypeDef* IN1_GPIO;

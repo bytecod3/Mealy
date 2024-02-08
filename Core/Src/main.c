@@ -45,7 +45,8 @@
 #define MOTOR_REFERENCE 200	// define the motor reference speed
 
 // motor defines
-#define DC_MOTOR_1 0
+#define LEFT_DC_MOTOR 0
+#define RIGHT_DC_MOTOR 1
 
 /* USER CODE END PD */
 
@@ -238,19 +239,15 @@ void setDutyCycle(int dutyCycle){
 
 //-------------------motor drive functions---------------------------
 
-// init DC motor
-motor_init(DC_MOTOR_1);
-
-
-void moveForward(){
-	// move the motors forward
-	HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_RESET);
-
-	HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_RESET);
-
-}
+//void moveForward(){
+//	// move the motors forward
+//	HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_SET);
+//	HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_RESET);
+//
+//	HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_SET);
+//	HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_RESET);
+//
+//}
 
 //void moveBackward(){
 //	// move the motors backward
@@ -298,27 +295,32 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
-  //MX_TIM2_Init(); // done in the motor.c file
+  MX_TIM2_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  // start motors
+  motor_init(LEFT_DC_MOTOR);
+  motor_init(RIGHT_DC_MOTOR);
+  motor_start(LEFT_DC_MOTOR, CW, 0);
+  motor_start(RIGHT_DC_MOTOR, CW, 0);
+
   // start the timers
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); // start channel 1
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2); // start channel 2
+  //HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); // start channel 1
+  //HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2); // start channel 2
 
   // start the motors at 50% speed
-  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1, 750); //first motor 75% voltage
-  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 750); //second motor 75% voltage
+  //__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1, 750); //first motor 75% voltage
+  //__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 750); //second motor 75% voltage
 
   /*-------------------------INERTIAL MEASUREMENT UNIT FUNCTIONS--------------------------------*/
-  MPU6050_Initialise(&acc, &hi2c1);// TODO: check init status here
+  MPU6050_Initialise(&acc, &hi2c1); // TODO: check init status here
 
   // calibrate the sensor
   callibrate_sensor();
 
   // initialise the sensor angles to known values
   set_last_read_angle_data(HAL_GetTick(), 0, 0, 0, 0, 0, 0);
-
 
   /* USER CODE END 2 */
 
@@ -340,18 +342,6 @@ int main(void)
 	  	x_acc_ms = p_acc->acc_mps2[0] * ONE_G;
 	  	y_acc_ms = p_acc->acc_mps2[1] * ONE_G;
 	  	z_acc_ms = p_acc->acc_mps2[2] * ONE_G;
-
-	  	// compose acceleration data
-	  //	sprintf(mpu_data,
-	  //		  "x_acc: %.2f, y_acc: %.2f, z_acc: %.2f || x_deg: %.2f, y_deg: %.2f, z_deg: %.2f, \r\n",
-	  //		  x_acc_ms,
-	  //		  y_acc_ms,
-	  //		  z_acc_ms,
-	  //		  p_acc->gyro_data[0],
-	  //		  p_acc->gyro_data[1],
-	  //		  p_acc->gyro_data[2]
-	  //	);
-
 
 	  	/*-------------- get orientation - tilt on x and y axis */
 
@@ -419,13 +409,28 @@ int main(void)
 	  			);
 
 	  	// run motors
-	  	moveForward();
-	  	HAL_Delay(200);
-	  	reverse();
-	  	HAL_Delay(200);
+	  	// test left motor
+	  	motor_set_dir(LEFT_DC_MOTOR, CW);
+	  	motor_set_speed(LEFT_DC_MOTOR, 750);
+	  	HAL_Delay(300);
+
+	  	motor_set_dir(LEFT_DC_MOTOR, CCW);
+	  	motor_set_speed(LEFT_DC_MOTOR, 750);
+	  	HAL_Delay(300);
+
+	  	// test right motor
+	  	motor_set_dir(RIGHT_DC_MOTOR, CW);
+		motor_set_speed(RIGHT_DC_MOTOR, 750);
+		HAL_Delay(300);
+
+		motor_set_dir(RIGHT_DC_MOTOR, CCW);
+		motor_set_speed(RIGHT_DC_MOTOR, 750);
+		HAL_Delay(300);
+
 
 	  // send data over USART3 TODO: change USART channel for BluePill
 	  HAL_UART_Transmit(&huart2, mpu_data, sizeof(mpu_data), 10000);
+	  HAL_UART_Transmit(&huart2, (uint8_t*) "Sending data...", strlen("Sending data..."), 100);
 
 	  // switch on RGB green LED - this is purely for aesthetics
 //	  HAL_GPIO_WritePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin, GPIO_PIN_SET);
@@ -657,6 +662,7 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
