@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "MPU6050.h"
 #include "motor.h"
+#include "pid.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
@@ -43,10 +44,21 @@
 
 // PID defines
 #define MOTOR_REFERENCE 200	// define the motor reference speed
+#define motor_reference_angle 0 // the imu is placed such that a change in y axis drives the tilt
+float sample_rate = 0.000125; // 0.125 ms TODO: use system clock to get sample rate
 
 // motor defines
 #define LEFT_DC_MOTOR 0
 #define RIGHT_DC_MOTOR 1
+
+// create motor PID instances
+// left motor PID instance
+pid_instance left_motor_pid_instance;
+pid_instance* p_left_motor_instance = &left_motor_pid_instance;
+
+// right motor PID instance
+pid_instance right_motor_pid_instance;
+pid_instance* p_right_motor_instance = &right_motor_pid_instance;
 
 /* USER CODE END PD */
 
@@ -305,13 +317,9 @@ int main(void)
   motor_start(LEFT_DC_MOTOR, CW, 0);
   motor_start(RIGHT_DC_MOTOR, CW, 0);
 
-  // start the timers
-  //HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); // start channel 1
-  //HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2); // start channel 2
-
-  // start the motors at 50% speed
-  //__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1, 750); //first motor 75% voltage
-  //__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2, 750); //second motor 75% voltage
+  // set pID gains
+  set_pid(p_left_motor_instance, 100, 0, 0);
+  set_pid(p_right_motor_instance, 100, 0, 0);
 
   /*-------------------------INERTIAL MEASUREMENT UNIT FUNCTIONS--------------------------------*/
   MPU6050_Initialise(&acc, &hi2c1); // TODO: check init status here
@@ -409,23 +417,53 @@ int main(void)
 	  			);
 
 	  	// run motors
+
+	  	apply_pid(p_left_motor_instance, motor_reference_angle - gyro_angle_y, sample_rate);
+	  	apply_pid(p_right_motor_instance, motor_reference_angle - gyro_angle_y, sample_rate);
+
+
+	  	if(p_left_motor_instance->output < 0 ) {
+
+	  		motor_set_dir(LEFT_DC_MOTOR, CW);
+	  		motor_set_speed(LEFT_DC_MOTOR, p_left_motor_instance->output);
+	  	}
+
+	  	if (p_right_motor_instance->output < 0 ) {
+	  		motor_set_dir(RIGHT_DC_MOTOR, CW);
+	  		motor_set_speed(RIGHT_DC_MOTOR, p_right_motor_instance->output);
+	  	}
+
+	  	if(p_left_motor_instance->output > 0 ) {
+
+			motor_set_dir(LEFT_DC_MOTOR, CCW);
+			motor_set_speed(LEFT_DC_MOTOR, p_left_motor_instance->output);
+		}
+
+		if (p_right_motor_instance->output > 0 ) {
+			motor_set_dir(RIGHT_DC_MOTOR, CCW);
+			motor_set_speed(RIGHT_DC_MOTOR, p_right_motor_instance->output);
+		}
+
+
+
+
 	  	// test left motor
-	  	motor_set_dir(LEFT_DC_MOTOR, CW);
-	  	motor_set_speed(LEFT_DC_MOTOR, 750);
-	  	HAL_Delay(300);
-
-	  	motor_set_dir(LEFT_DC_MOTOR, CCW);
-	  	motor_set_speed(LEFT_DC_MOTOR, 750);
-	  	HAL_Delay(300);
-
-	  	// test right motor
-	  	motor_set_dir(RIGHT_DC_MOTOR, CW);
-		motor_set_speed(RIGHT_DC_MOTOR, 750);
-		HAL_Delay(300);
-
-		motor_set_dir(RIGHT_DC_MOTOR, CCW);
-		motor_set_speed(RIGHT_DC_MOTOR, 750);
-		HAL_Delay(300);
+//	  	motor_set_dir(LEFT_DC_MOTOR, CW);
+//	  	motor_set_speed(LEFT_DC_MOTOR, 200);
+//	  	HAL_Delay(300);
+//
+//	  	motor_set_dir(LEFT_DC_MOTOR, CCW);
+//	  	motor_set_speed(LEFT_DC_MOTOR, 200);
+//	  	HAL_Delay(300);
+//
+//	  	// test right motor
+//	  	motor_set_dir(RIGHT_DC_MOTOR, CW);
+//		motor_set_speed(RIGHT_DC_MOTOR, 300);
+//		HAL_Delay(300);
+//
+//		motor_set_dir(RIGHT_DC_MOTOR, CCW);
+//		motor_set_speed(RIGHT_DC_MOTOR, 300);
+//		HAL_Delay(300);
 
 
 	  // send data over USART3 TODO: change USART channel for BluePill

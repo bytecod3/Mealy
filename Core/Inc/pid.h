@@ -11,16 +11,24 @@
 #include <stdint.h>
 
 
+extern double sample_time;
+
+#define PID_MAX 1000
+#define PID_MIN	-1000
+#define INTEGRAL_MAX_GAIN 1000
+#define INTEGRAL_MIN_GAIN -1000
+
+
 /**
  * struct to hold PID values
  */
 typedef struct {
-	float kp;					// proportional constant
-	float ki;					// integral constant
-	float kd;					// derivative constant
+	float p_gain;					// proportional constant
+	float i_gain;					// integral constant
+	float d_gain;					// derivative constant
 	int16_t last_error;			// last error computed
-	int32_t error_intergral;	// integral error
-	int16_t pid_output;			// corrected value output
+	int32_t error_integral;	// integral error
+	int16_t output;			// corrected value output
 
 } pid_instance;
 
@@ -32,7 +40,7 @@ void set_pid_gain(pid_instance* pid_instance, uint16_t kp, uint16_t ki, uint16_t
 /**
  * Compute PID
  */
-void apply_pid(pid_instance* pid_instance, uint16_t input_error, uint16_t smapling_rate);
+void apply_pid(pid_instance* pid_instance, int16_t input_error, float sample_rate);
 
 
 #endif /* INC_PID_H_ */
