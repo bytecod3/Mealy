@@ -35,7 +35,7 @@ typedef struct {
 /**
  * Set PID values
  */
-void set_pid_gain(pid_instance* pid_instance, uint16_t kp, uint16_t ki, uint16_t kd);
+void set_pid(pid_instance* pid_instance, uint16_t kp, uint16_t ki, uint16_t kd);
 
 /**
  * Compute PID

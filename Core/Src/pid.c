@@ -10,12 +10,11 @@
 /**
  * Set PID gains
  */
-void set_pid(pid_instance* pid_instance, float kp, float ki, float kd){
+void set_pid(pid_instance* pid_instance, uint16_t kp, uint16_t ki, uint16_t kd){
 
 	pid_instance->p_gain = kp;
 	pid_instance->i_gain = ki;
 	pid_instance->d_gain = kd;
-
 }
 
 void apply_pid(pid_instance* pid_instance, int16_t input_error, float sample_rate) {

@@ -73,6 +73,7 @@ I2C_HandleTypeDef hi2c2;
 
 TIM_HandleTypeDef htim2;
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -216,6 +217,7 @@ static void MX_I2C1_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void myPrintf(const char *fmt, ...); // function to send formatted data over serial
 void setDutyCycle(int dutyCycle); // function to set PWM duty cycle
@@ -309,6 +311,7 @@ int main(void)
   MX_I2C2_Init();
   MX_TIM2_Init();
   MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
   // start motors
@@ -318,8 +321,8 @@ int main(void)
   motor_start(RIGHT_DC_MOTOR, CW, 0);
 
   // set pID gains
-  set_pid(p_left_motor_instance, 100, 0, 0);
-  set_pid(p_right_motor_instance, 100, 0, 0);
+  set_pid(p_left_motor_instance, 200, 1, 0);
+  set_pid(p_right_motor_instance, 200, 1, 0);
 
   /*-------------------------INERTIAL MEASUREMENT UNIT FUNCTIONS--------------------------------*/
   MPU6050_Initialise(&acc, &hi2c1); // TODO: check init status here
@@ -410,17 +413,15 @@ int main(void)
 
 	  	// according to how i've mounted the MPU, i'm interested in x-axis angle
 	  	sprintf(mpu_data,
-	  			"x: %.2f, y: %.2f, dt:%.2f \r\n",
+	  			"x: %.2f, y: %.2f \r\n",
 				p_filtered_angles->x_angle_estimate,
-				p_filtered_angles->y_angle_estimate,
-				dt
+				p_filtered_angles->y_angle_estimate
 	  			);
 
 	  	// run motors
 
-	  	apply_pid(p_left_motor_instance, motor_reference_angle - gyro_angle_y, sample_rate);
-	  	apply_pid(p_right_motor_instance, motor_reference_angle - gyro_angle_y, sample_rate);
-
+	  	apply_pid(p_left_motor_instance, motor_reference_angle - p_filtered_angles->x_angle_estimate, sample_rate);
+	  	apply_pid(p_right_motor_instance, motor_reference_angle - p_filtered_angles->x_angle_estimate, sample_rate);
 
 	  	if(p_left_motor_instance->output < 0 ) {
 
@@ -445,8 +446,6 @@ int main(void)
 		}
 
 
-
-
 	  	// test left motor
 //	  	motor_set_dir(LEFT_DC_MOTOR, CW);
 //	  	motor_set_speed(LEFT_DC_MOTOR, 200);
@@ -467,8 +466,8 @@ int main(void)
 
 
 	  // send data over USART3 TODO: change USART channel for BluePill
-	  HAL_UART_Transmit(&huart2, mpu_data, sizeof(mpu_data), 10000);
-	  HAL_UART_Transmit(&huart2, (uint8_t*) "Sending data...", strlen("Sending data..."), 100);
+	  HAL_UART_Transmit(&huart1, mpu_data, sizeof(mpu_data), 10000);
+//	  HAL_UART_Transmit(&huart1, (uint8_t*) "Sending data...", strlen("Sending data..."), 100);
 
 	  // switch on RGB green LED - this is purely for aesthetics
 //	  HAL_GPIO_WritePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin, GPIO_PIN_SET);
@@ -656,6 +655,39 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -707,12 +739,22 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, IN1_Pin|IN2_Pin|IN3_Pin|IN4_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, RGB_BLUE_Pin|RGB_GREEN_Pin|RGB_RED_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pins : IN1_Pin IN2_Pin IN3_Pin IN4_Pin */
   GPIO_InitStruct.Pin = IN1_Pin|IN2_Pin|IN3_Pin|IN4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : RGB_BLUE_Pin RGB_GREEN_Pin RGB_RED_Pin */
+  GPIO_InitStruct.Pin = RGB_BLUE_Pin|RGB_GREEN_Pin|RGB_RED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

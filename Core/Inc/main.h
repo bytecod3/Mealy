@@ -67,6 +67,12 @@ void Error_Handler(void);
 #define IN3_GPIO_Port GPIOB
 #define IN4_Pin GPIO_PIN_15
 #define IN4_GPIO_Port GPIOB
+#define RGB_BLUE_Pin GPIO_PIN_11
+#define RGB_BLUE_GPIO_Port GPIOA
+#define RGB_GREEN_Pin GPIO_PIN_12
+#define RGB_GREEN_GPIO_Port GPIOA
+#define RGB_RED_Pin GPIO_PIN_13
+#define RGB_RED_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 
