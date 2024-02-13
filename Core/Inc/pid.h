@@ -13,8 +13,8 @@
 
 extern double sample_time;
 
-#define PID_MAX 1000
-#define PID_MIN	-1000
+#define PID_MAX 600
+#define PID_MIN	-600
 #define INTEGRAL_MAX_GAIN 1000
 #define INTEGRAL_MIN_GAIN -1000
 

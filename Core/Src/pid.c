@@ -18,6 +18,7 @@ void set_pid(pid_instance* pid_instance, uint16_t kp, uint16_t ki, uint16_t kd){
 }
 
 void apply_pid(pid_instance* pid_instance, int16_t input_error, float sample_rate) {
+	// sample rate is the frequency of the system
 
 	pid_instance->error_integral += input_error;
 
@@ -31,7 +32,7 @@ void apply_pid(pid_instance* pid_instance, int16_t input_error, float sample_rat
 
 	int16_t p = pid_instance->p_gain * input_error;
 	int16_t i = pid_instance->i_gain * (pid_instance->error_integral) / sample_rate;
-	int16_t d = pid_instance->d_gain * sample_rate * (input_error - pid_instance->last_error);
+	int16_t d = pid_instance->d_gain *  sample_rate * (input_error - pid_instance->last_error);
 
 	pid_instance->output = p + i + d;
 

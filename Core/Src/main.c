@@ -24,6 +24,7 @@
 #include "MPU6050.h"
 #include "motor.h"
 #include "pid.h"
+#include "RGB.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
@@ -45,7 +46,8 @@
 // PID defines
 #define MOTOR_REFERENCE 200	// define the motor reference speed
 #define motor_reference_angle 0 // the imu is placed such that a change in y axis drives the tilt
-float sample_rate = 0.000125; // 0.125 ms TODO: use system clock to get sample rate
+//float sample_rate = 0.000125; // 0.125 ms TODO: use system clock to get sample rate
+uint16_t sampling_frequency = 8000000;
 
 // motor defines
 #define LEFT_DC_MOTOR 0
@@ -60,6 +62,19 @@ pid_instance* p_left_motor_instance = &left_motor_pid_instance;
 pid_instance right_motor_pid_instance;
 pid_instance* p_right_motor_instance = &right_motor_pid_instance;
 
+// RGB LED variables
+// create an RGB LED instance
+RGB_instance mealy_rgb;
+RGB_instance* p_mealy_rgb = &mealy_rgb;
+
+// a color struct to hold different colors
+RGB_color mealy_colors;
+RGB_color* p_mealy_colors = &mealy_colors;
+volatile uint8_t interrupt_counter = 0;
+uint8_t seconds = 0;
+uint32_t last_time = 0;
+
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -69,11 +84,11 @@ pid_instance* p_right_motor_instance = &right_motor_pid_instance;
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
-I2C_HandleTypeDef hi2c2;
 
+TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 
-UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -162,9 +177,6 @@ void callibrate_sensor(){
 	float 	y_gyro	= 0;
 	float	z_gyro	= 0;
 
-	// read and average the raw values from the IMU
-	myPrintf((const char*)"Callibrating sensor...\r");
-
 	for(int i = 0; i < num_readings; i++){
 		// read accelerometer
 		MPU6050_ReadAcceleration(&acc);
@@ -214,10 +226,10 @@ void callibrate_sensor(){
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_I2C2_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_USART1_UART_Init(void);
+static void MX_TIM1_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void myPrintf(const char *fmt, ...); // function to send formatted data over serial
 void setDutyCycle(int dutyCycle); // function to set PWM duty cycle
@@ -244,38 +256,6 @@ void myPrintf(const char* fmt, ...){
 	int len = strlen(buffer);
 	HAL_UART_Transmit(&huart2, (uint8_t*)buffer, len, -1);
 }
-
-// set duty cycle for a given channel
-void setDutyCycle(int dutyCycle){
-	TIM2->CCR1 = dutyCycle * 100; // 100? ARR is set to 10000, check reference no. 1 for formula
-	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-}
-
-//-------------------motor drive functions---------------------------
-
-//void moveForward(){
-//	// move the motors forward
-//	HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_RESET);
-//
-//	HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_RESET);
-//
-//}
-
-//void moveBackward(){
-//	// move the motors backward
-//	HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_RESET);
-//	HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_SET);
-//
-//	HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_RESET);
-//	HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_SET);
-//}
-
-//void start(){
-//	// start the robot in forward direction - for testing
-//	moveForward();
-//}
 
 /* USER CODE END 0 */
 
@@ -308,10 +288,10 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C1_Init();
-  MX_I2C2_Init();
   MX_TIM2_Init();
   MX_USART2_UART_Init();
-  MX_USART1_UART_Init();
+  MX_TIM1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
   // start motors
@@ -321,8 +301,8 @@ int main(void)
   motor_start(RIGHT_DC_MOTOR, CW, 0);
 
   // set pID gains
-  set_pid(p_left_motor_instance, 200, 1, 0);
-  set_pid(p_right_motor_instance, 200, 1, 0);
+  set_pid(p_left_motor_instance, 60, 400, 0.8);
+  set_pid(p_right_motor_instance, 60, 400, 0.8);
 
   /*-------------------------INERTIAL MEASUREMENT UNIT FUNCTIONS--------------------------------*/
   MPU6050_Initialise(&acc, &hi2c1); // TODO: check init status here
@@ -332,6 +312,31 @@ int main(void)
 
   // initialise the sensor angles to known values
   set_last_read_angle_data(HAL_GetTick(), 0, 0, 0, 0, 0, 0);
+
+  //-------------RGB---------------------
+
+  // timer to generate 1 second pulses - used to run RGB time state machine
+	HAL_TIM_Base_Start_IT(&htim3);
+	TIM3->CCR1 = 500; // set timer 3 duty cycle to 50%
+
+	// set parameters for RGB LED
+	// for setting fade interval
+	last_time = HAL_GetTick();
+
+	RGB_set_parameters(p_mealy_rgb, &htim1, last_time);
+
+	RGB_init(p_mealy_rgb);
+
+	RGB_color_code white = WHITE;
+	RGB_color_code green = GREEN;
+	RGB_color_code red = RED;
+	RGB_color_code blue = BLUE;
+
+	p_mealy_colors->red_value = 0;
+	p_mealy_colors->green_value = 255;
+	p_mealy_colors->red_value = 0;
+
+	RGB_set_color(p_mealy_rgb, p_mealy_colors);
 
   /* USER CODE END 2 */
 
@@ -397,31 +402,19 @@ int main(void)
 	  			gyro_angle_z
 	  			);
 
-	  	// construct debug data string
-//	  	sprintf(mpu_data,
-//	  			"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f \r\n",
-//	  			accel_angle_x,
-//	  			accel_angle_y,
-//	  			accel_angle_z,
-//	  			gyro_angle_x,
-//	  			gyro_angle_y,
-//	  			gyro_angle_z,
-//	  			p_filtered_angles->x_angle_estimate,
-//	  			p_filtered_angles->y_angle_estimate,
-//	  			p_filtered_angles->z_angle_estimate
-//	  	);
-
 	  	// according to how i've mounted the MPU, i'm interested in x-axis angle
-	  	sprintf(mpu_data,
-	  			"x: %.2f, y: %.2f \r\n",
-				p_filtered_angles->x_angle_estimate,
-				p_filtered_angles->y_angle_estimate
-	  			);
+//	  	sprintf(mpu_data,
+//	  			"x: %.2f, y: %.2f \r\n",
+//				p_filtered_angles->x_angle_estimate,
+//				p_filtered_angles->y_angle_estimate
+//	  			);
+
+	  	sprintf(mpu_data, "%d\r\n", seconds);
 
 	  	// run motors
 
-	  	apply_pid(p_left_motor_instance, motor_reference_angle - p_filtered_angles->x_angle_estimate, sample_rate);
-	  	apply_pid(p_right_motor_instance, motor_reference_angle - p_filtered_angles->x_angle_estimate, sample_rate);
+	  	apply_pid(p_left_motor_instance, motor_reference_angle - p_filtered_angles->x_angle_estimate,  sampling_frequency);
+	  	apply_pid(p_right_motor_instance, motor_reference_angle - p_filtered_angles->x_angle_estimate, sampling_frequency);
 
 	  	if(p_left_motor_instance->output < 0 ) {
 
@@ -445,43 +438,31 @@ int main(void)
 			motor_set_speed(RIGHT_DC_MOTOR, p_right_motor_instance->output);
 		}
 
-
-	  	// test left motor
-//	  	motor_set_dir(LEFT_DC_MOTOR, CW);
-//	  	motor_set_speed(LEFT_DC_MOTOR, 200);
-//	  	HAL_Delay(300);
+		//---------------RGB-----------------
+		// change pulse color after set time interval
+//	  if(seconds < 15) {
+//		  // pulse a different color
+//		  // fade white
+//		  pulse(p_mealy_rgb, red, last_time);
 //
-//	  	motor_set_dir(LEFT_DC_MOTOR, CCW);
-//	  	motor_set_speed(LEFT_DC_MOTOR, 200);
-//	  	HAL_Delay(300);
-//
-//	  	// test right motor
-//	  	motor_set_dir(RIGHT_DC_MOTOR, CW);
-//		motor_set_speed(RIGHT_DC_MOTOR, 300);
-//		HAL_Delay(300);
-//
-//		motor_set_dir(RIGHT_DC_MOTOR, CCW);
-//		motor_set_speed(RIGHT_DC_MOTOR, 300);
-//		HAL_Delay(300);
-
-
-	  // send data over USART3 TODO: change USART channel for BluePill
-	  HAL_UART_Transmit(&huart1, mpu_data, sizeof(mpu_data), 10000);
-//	  HAL_UART_Transmit(&huart1, (uint8_t*) "Sending data...", strlen("Sending data..."), 100);
-
-	  // switch on RGB green LED - this is purely for aesthetics
-//	  HAL_GPIO_WritePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin, GPIO_PIN_SET);
-//	  HAL_Delay(300);
-//
-//	  HAL_GPIO_WritePin(GREEN_LED_GPIO_Port, GREEN_LED_Pin, GPIO_PIN_RESET);
-//	  HAL_Delay(300);
-
-	  // test PWM on LED brightness
-//	  for(int i =0; i < 100; i++){
-//		  setDutyCycle(i);
-//		  HAL_Delay(100);
+//	  } else if(seconds < 30) {
+//		  // fade green
+//		  pulse(p_mealy_rgb, green, last_time);
+//	  } else if(seconds > 30) {
+//		  // fade red
+//		  pulse(p_mealy_rgb, white , last_time);
 //	  }
 //
+//	  if(seconds == 60) {
+//		  seconds = 0;
+//	  }
+
+	  pulse(p_mealy_rgb, green , last_time);
+
+	  // send data over USART3 TODO: change USART channel for BluePill
+	  HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, sizeof(mpu_data), 10000);
+//	  HAL_UART_Transmit(&huart1, (uint8_t*) "Sending data...", strlen("Sending data..."), 100);
+
 	  HAL_Delay(LOOP_DELAY); // a slight delay
   }
   /* USER CODE END 3 */
@@ -558,36 +539,85 @@ static void MX_I2C1_Init(void)
 }
 
 /**
-  * @brief I2C2 Initialization Function
+  * @brief TIM1 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_I2C2_Init(void)
+static void MX_TIM1_Init(void)
 {
 
-  /* USER CODE BEGIN I2C2_Init 0 */
+  /* USER CODE BEGIN TIM1_Init 0 */
 
-  /* USER CODE END I2C2_Init 0 */
+  /* USER CODE END TIM1_Init 0 */
 
-  /* USER CODE BEGIN I2C2_Init 1 */
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
-  /* USER CODE END I2C2_Init 1 */
-  hi2c2.Instance = I2C2;
-  hi2c2.Init.ClockSpeed = 100000;
-  hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c2.Init.OwnAddress1 = 0;
-  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c2.Init.OwnAddress2 = 0;
-  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 0;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 255;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN I2C2_Init 2 */
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
 
-  /* USER CODE END I2C2_Init 2 */
+  /* USER CODE END TIM1_Init 2 */
+  HAL_TIM_MspPostInit(&htim1);
 
 }
 
@@ -655,35 +685,47 @@ static void MX_TIM2_Init(void)
 }
 
 /**
-  * @brief USART1 Initialization Function
+  * @brief TIM3 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_USART1_UART_Init(void)
+static void MX_TIM3_Init(void)
 {
 
-  /* USER CODE BEGIN USART1_Init 0 */
+  /* USER CODE BEGIN TIM3_Init 0 */
 
-  /* USER CODE END USART1_Init 0 */
+  /* USER CODE END TIM3_Init 0 */
 
-  /* USER CODE BEGIN USART1_Init 1 */
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE END USART1_Init 1 */
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 8000-1;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 1000-1;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN USART1_Init 2 */
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
 
-  /* USER CODE END USART1_Init 2 */
+  /* USER CODE END TIM3_Init 2 */
 
 }
 
@@ -737,30 +779,23 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, IN1_Pin|IN2_Pin|IN3_Pin|IN4_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, IN1_Pin|GPIO_PIN_13|IN3_Pin|IN4_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, RGB_BLUE_Pin|RGB_GREEN_Pin|RGB_RED_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pins : IN1_Pin IN2_Pin IN3_Pin IN4_Pin */
-  GPIO_InitStruct.Pin = IN1_Pin|IN2_Pin|IN3_Pin|IN4_Pin;
+  /*Configure GPIO pins : IN1_Pin PB13 IN3_Pin IN4_Pin */
+  GPIO_InitStruct.Pin = IN1_Pin|GPIO_PIN_13|IN3_Pin|IN4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : RGB_BLUE_Pin RGB_GREEN_Pin RGB_RED_Pin */
-  GPIO_InitStruct.Pin = RGB_BLUE_Pin|RGB_GREEN_Pin|RGB_RED_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	seconds++;
+}
 
 /* USER CODE END 4 */
 
