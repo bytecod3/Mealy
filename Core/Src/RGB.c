@@ -70,7 +70,7 @@ void pulse(RGB_instance* rgb_instance, RGB_color_code color_code , uint32_t last
 		// red color
 
 		// increase brightness
-		for(int i =0; i < 255; i++) {
+		for(int i = 0; i < 255; i++) {
 			p_color->red_value = i;
 			p_color->green_value = 0;
 			p_color->blue_value = 0;

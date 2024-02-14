@@ -70,7 +70,6 @@ RGB_instance* p_mealy_rgb = &mealy_rgb;
 // a color struct to hold different colors
 RGB_color mealy_colors;
 RGB_color* p_mealy_colors = &mealy_colors;
-volatile uint8_t interrupt_counter = 0;
 uint8_t seconds = 0;
 uint32_t last_time = 0;
 
@@ -333,10 +332,10 @@ int main(void)
 	RGB_color_code blue = BLUE;
 
 	p_mealy_colors->red_value = 0;
-	p_mealy_colors->green_value = 255;
-	p_mealy_colors->red_value = 0;
+	p_mealy_colors->green_value = 0;
+	p_mealy_colors->blue_value = 255;
 
-	RGB_set_color(p_mealy_rgb, p_mealy_colors);
+//	RGB_set_color(p_mealy_rgb, p_mealy_colors);
 
   /* USER CODE END 2 */
 
@@ -409,7 +408,7 @@ int main(void)
 //				p_filtered_angles->y_angle_estimate
 //	  			);
 
-	  	sprintf(mpu_data, "%d\r\n", seconds);
+//	  	sprintf(mpu_data, "%d\r\n", seconds);
 
 	  	// run motors
 
@@ -457,13 +456,40 @@ int main(void)
 //		  seconds = 0;
 //	  }
 
-	  pulse(p_mealy_rgb, green , last_time);
+//	  pulse(p_mealy_rgb, green , last_time);
+
+		for (int i =0; i< 255; i++) {
+			p_mealy_colors->red_value = 0;
+			p_mealy_colors->green_value = 0;
+			p_mealy_colors->blue_value = i;
+
+			sprintf(mpu_data, "%d\r\n", i);
+
+			if( (HAL_GetTick() - last_time) > 100 ) {
+				RGB_set_color(p_mealy_rgb, p_mealy_colors);
+				HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, 100, 100);
+				last_time = HAL_GetTick();
+			}
+		}
+
+		for (int i = 255; i>0; i--) {
+			p_mealy_colors->red_value = 0;
+			p_mealy_colors->green_value = 0;
+			p_mealy_colors->blue_value = i;
+
+			if( (HAL_GetTick() - last_time) > 100 ) {
+				RGB_set_color(p_mealy_rgb, p_mealy_colors);
+				HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, 100, 100);
+				last_time = HAL_GetTick();
+			}
+
+		}
+
 
 	  // send data over USART3 TODO: change USART channel for BluePill
-	  HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, sizeof(mpu_data), 10000);
+//	  HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, sizeof(mpu_data), 100);
 //	  HAL_UART_Transmit(&huart1, (uint8_t*) "Sending data...", strlen("Sending data..."), 100);
 
-	  HAL_Delay(LOOP_DELAY); // a slight delay
   }
   /* USER CODE END 3 */
 }
@@ -496,7 +522,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV8;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
@@ -561,7 +587,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 255;
+  htim1.Init.Period = 255-1;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;

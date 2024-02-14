@@ -33,7 +33,7 @@ typedef enum {
 	WHITE
 }  RGB_color_code;
 
-#define FADE_INTERVAL 5 // interval timer to fade LEDs. set small number for fast fade
+#define FADE_INTERVAL 1000 // interval timer to fade LEDs. set small number for fast fade
 
 /* set RGB LED parameters */
 void RGB_set_parameters(RGB_instance* rgb_instance, TIM_HandleTypeDef* timer, uint32_t last_time);
