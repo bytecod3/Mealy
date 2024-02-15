@@ -288,6 +288,22 @@ void sayHello() {
 	HAL_Delay(SPLASH_DELAY);
 
 	SSD1306_Clear();
+	SSD1306_GotoXY(20, 16);
+	SSD1306_Puts("A self ",&Font_11x18 , 1);
+	SSD1306_GotoXY(10, 38);
+	SSD1306_Puts("balancing",&Font_11x18, 1);
+	SSD1306_UpdateScreen(); //display
+
+	HAL_Delay(SPLASH_DELAY);
+
+	SSD1306_Clear();
+	SSD1306_GotoXY(40, 25);
+	SSD1306_Puts("robot...", &Font_11x18, 1);
+	SSD1306_UpdateScreen(); //display
+
+	HAL_Delay(SPLASH_DELAY);
+
+	SSD1306_Clear();
 	SSD1306_DrawBitmap(0,0,powered_by,128,64,1);
 	SSD1306_UpdateScreen();
 
@@ -340,7 +356,7 @@ int main(void)
   motor_start(RIGHT_DC_MOTOR, CW, 0);
 
   // set pID gains
-  set_pid(p_left_motor_instance, 40, 600, 0.8);
+  set_pid(p_left_motor_instance, 0, 600, 0.8);
   set_pid(p_right_motor_instance, 40, 600, 0.8);
 
   set_pid(p_left_motor_instance, 40, 600, 0.8);
