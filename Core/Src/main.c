@@ -25,6 +25,8 @@
 #include "motor.h"
 #include "pid.h"
 #include "RGB.h"
+#include "ssd1306.h"
+#include "fonts.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
@@ -83,6 +85,7 @@ uint32_t last_time = 0;
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c2;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
@@ -229,17 +232,13 @@ static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_I2C2_Init(void);
 /* USER CODE BEGIN PFP */
 void myPrintf(const char *fmt, ...); // function to send formatted data over serial
 void setDutyCycle(int dutyCycle); // function to set PWM duty cycle
 
-//motor drive functions
-void moveForward();
-void moveBackward();
-void moveLeft();
-void moveRight();
-void stop();
-void start();
+// OLED
+void sayHello(); // display on start screen sequence before I start running
 
 /* USER CODE END PFP */
 
@@ -291,6 +290,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
+  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
 
   // start motors
@@ -336,6 +336,16 @@ int main(void)
 	p_mealy_colors->blue_value = 255;
 
 //	RGB_set_color(p_mealy_rgb, p_mealy_colors);
+
+	// OLED screen
+	SSD1306_Init();  // initialise SSD
+
+	SSD1306_GotoXY (30, 20);
+	SSD1306_Puts ("Hello", &Font_11x18, 1);
+	SSD1306_GotoXY (20, 40);
+	SSD1306_Puts ("world :)", &Font_11x18, 1);
+	SSD1306_UpdateScreen(); //display
+
 
   /* USER CODE END 2 */
 
@@ -439,51 +449,49 @@ int main(void)
 
 		//---------------RGB-----------------
 		// change pulse color after set time interval
-//	  if(seconds < 15) {
-//		  // pulse a different color
-//		  // fade white
-//		  pulse(p_mealy_rgb, red, last_time);
+	  if(seconds < 15) {
+		  // pulse a different color
+		  // fade white
+		  pulse(p_mealy_rgb, red, last_time);
+
+	  } else if(seconds < 30) {
+		  // fade green
+		  pulse(p_mealy_rgb, green, last_time);
+	  } else if(seconds > 30) {
+		  // fade red
+		  pulse(p_mealy_rgb, white , last_time);
+	  }
+
+	  if(seconds == 60) {
+		  seconds = 0;
+	  }
+
+//		for (int i =0; i< 255; i++) {
+//			p_mealy_colors->red_value = 0;
+//			p_mealy_colors->green_value = 0;
+//			p_mealy_colors->blue_value = i;
 //
-//	  } else if(seconds < 30) {
-//		  // fade green
-//		  pulse(p_mealy_rgb, green, last_time);
-//	  } else if(seconds > 30) {
-//		  // fade red
-//		  pulse(p_mealy_rgb, white , last_time);
-//	  }
+//			sprintf(mpu_data, "%d\r\n", i);
 //
-//	  if(seconds == 60) {
-//		  seconds = 0;
-//	  }
-
-//	  pulse(p_mealy_rgb, green , last_time);
-
-		for (int i =0; i< 255; i++) {
-			p_mealy_colors->red_value = 0;
-			p_mealy_colors->green_value = 0;
-			p_mealy_colors->blue_value = i;
-
-			sprintf(mpu_data, "%d\r\n", i);
-
-			if( (HAL_GetTick() - last_time) > 100 ) {
-				RGB_set_color(p_mealy_rgb, p_mealy_colors);
-				HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, 100, 100);
-				last_time = HAL_GetTick();
-			}
-		}
-
-		for (int i = 255; i>0; i--) {
-			p_mealy_colors->red_value = 0;
-			p_mealy_colors->green_value = 0;
-			p_mealy_colors->blue_value = i;
-
-			if( (HAL_GetTick() - last_time) > 100 ) {
-				RGB_set_color(p_mealy_rgb, p_mealy_colors);
-				HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, 100, 100);
-				last_time = HAL_GetTick();
-			}
-
-		}
+//			if( (HAL_GetTick() - last_time) > 100 ) {
+//				RGB_set_color(p_mealy_rgb, p_mealy_colors);
+//				HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, 100, 100);
+//				last_time = HAL_GetTick();
+//			}
+//		}
+//
+//		for (int i = 255; i>0; i--) {
+//			p_mealy_colors->red_value = 0;
+//			p_mealy_colors->green_value = 0;
+//			p_mealy_colors->blue_value = i;
+//
+//			if( (HAL_GetTick() - last_time) > 100 ) {
+//				RGB_set_color(p_mealy_rgb, p_mealy_colors);
+//				HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, 100, 100);
+//				last_time = HAL_GetTick();
+//			}
+//
+//		}
 
 
 	  // send data over USART3 TODO: change USART channel for BluePill
@@ -561,6 +569,40 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief I2C2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C2_Init(void)
+{
+
+  /* USER CODE BEGIN I2C2_Init 0 */
+
+  /* USER CODE END I2C2_Init 0 */
+
+  /* USER CODE BEGIN I2C2_Init 1 */
+
+  /* USER CODE END I2C2_Init 1 */
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.ClockSpeed = 400000;
+  hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C2_Init 2 */
+
+  /* USER CODE END I2C2_Init 2 */
 
 }
 
@@ -805,10 +847,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, IN1_Pin|GPIO_PIN_13|IN3_Pin|IN4_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, IN1_Pin|IN2_Pin|IN3_Pin|IN4_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : IN1_Pin PB13 IN3_Pin IN4_Pin */
-  GPIO_InitStruct.Pin = IN1_Pin|GPIO_PIN_13|IN3_Pin|IN4_Pin;
+  /*Configure GPIO pins : IN1_Pin IN2_Pin IN3_Pin IN4_Pin */
+  GPIO_InitStruct.Pin = IN1_Pin|IN2_Pin|IN3_Pin|IN4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
