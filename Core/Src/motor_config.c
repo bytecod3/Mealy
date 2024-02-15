@@ -14,7 +14,7 @@ const MOTOR_ConfigTypeDef motor_config_params[MOTOR_UNITS] =
 		{
 				GPIOB,			// in1 port
 				GPIOB,			// in2 port
-				GPIO_PIN_12,	// in1 pin
+				GPIO_PIN_1,		// in1 pin
 				GPIO_PIN_13,	// in2 pin
 				TIM2,			// timer used
 				TIM_CHANNEL_1,	// timer channel

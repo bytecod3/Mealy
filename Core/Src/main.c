@@ -27,6 +27,7 @@
 #include "RGB.h"
 #include "ssd1306.h"
 #include "fonts.h"
+#include "splash_screen.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
@@ -42,8 +43,9 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define ONE_G 				(9.81) // acceleration due to gravity
+#define ONE_G 				(9.81) 	// acceleration due to gravity
 #define LOOP_DELAY 			(10)	// infinite loop delay
+#define SPLASH_DELAY 		3000 	// interval when displaying splash screen
 
 // PID defines
 #define MOTOR_REFERENCE 200	// define the motor reference speed
@@ -238,7 +240,8 @@ void myPrintf(const char *fmt, ...); // function to send formatted data over ser
 void setDutyCycle(int dutyCycle); // function to set PWM duty cycle
 
 // OLED
-void sayHello(); // display on start screen sequence before I start running
+// display on start screen sequence before I start running
+void sayHello();
 
 /* USER CODE END PFP */
 
@@ -253,6 +256,43 @@ void myPrintf(const char* fmt, ...){
 
 	int len = strlen(buffer);
 	HAL_UART_Transmit(&huart2, (uint8_t*)buffer, len, -1);
+}
+
+void sayHello() {
+
+	// display logo bitmap
+	SSD1306_Clear();
+	SSD1306_DrawBitmap(0,0,splash_screen,128,64,1);
+	SSD1306_UpdateScreen();
+
+	HAL_Delay(SPLASH_DELAY);
+
+	// hello world message
+	SSD1306_Clear();
+	SSD1306_GotoXY (30, 20);
+	SSD1306_Puts ("Hello", &Font_11x18, 1);
+	SSD1306_GotoXY (20, 40);
+	SSD1306_Puts ("world :)", &Font_11x18, 1);
+	SSD1306_UpdateScreen(); //display
+
+	HAL_Delay(SPLASH_DELAY);
+
+	// introduction
+	SSD1306_Clear();
+	SSD1306_GotoXY(15, 16);
+	SSD1306_Puts("My name is", &Font_11x18, 1);
+	SSD1306_GotoXY(25, 35);
+	SSD1306_Puts("Mealy...", &Font_11x18, 1);
+	SSD1306_UpdateScreen(); //display
+
+	HAL_Delay(SPLASH_DELAY);
+
+	SSD1306_Clear();
+	SSD1306_DrawBitmap(0,0,powered_by,128,64,1);
+	SSD1306_UpdateScreen();
+
+	HAL_Delay(SPLASH_DELAY);
+
 }
 
 /* USER CODE END 0 */
@@ -300,8 +340,11 @@ int main(void)
   motor_start(RIGHT_DC_MOTOR, CW, 0);
 
   // set pID gains
-  set_pid(p_left_motor_instance, 60, 400, 0.8);
-  set_pid(p_right_motor_instance, 60, 400, 0.8);
+  set_pid(p_left_motor_instance, 40, 600, 0.8);
+  set_pid(p_right_motor_instance, 40, 600, 0.8);
+
+  set_pid(p_left_motor_instance, 40, 600, 0.8);
+  set_pid(p_right_motor_instance, 40, 600, 0.8);
 
   /*-------------------------INERTIAL MEASUREMENT UNIT FUNCTIONS--------------------------------*/
   MPU6050_Initialise(&acc, &hi2c1); // TODO: check init status here
@@ -335,16 +378,10 @@ int main(void)
 	p_mealy_colors->green_value = 0;
 	p_mealy_colors->blue_value = 255;
 
-//	RGB_set_color(p_mealy_rgb, p_mealy_colors);
+	// initalise OLED screen
+	SSD1306_Init();
 
-	// OLED screen
-	SSD1306_Init();  // initialise SSD
-
-	SSD1306_GotoXY (30, 20);
-	SSD1306_Puts ("Hello", &Font_11x18, 1);
-	SSD1306_GotoXY (20, 40);
-	SSD1306_Puts ("world :)", &Font_11x18, 1);
-	SSD1306_UpdateScreen(); //display
+	sayHello();
 
 
   /* USER CODE END 2 */
@@ -465,33 +502,6 @@ int main(void)
 	  if(seconds == 60) {
 		  seconds = 0;
 	  }
-
-//		for (int i =0; i< 255; i++) {
-//			p_mealy_colors->red_value = 0;
-//			p_mealy_colors->green_value = 0;
-//			p_mealy_colors->blue_value = i;
-//
-//			sprintf(mpu_data, "%d\r\n", i);
-//
-//			if( (HAL_GetTick() - last_time) > 100 ) {
-//				RGB_set_color(p_mealy_rgb, p_mealy_colors);
-//				HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, 100, 100);
-//				last_time = HAL_GetTick();
-//			}
-//		}
-//
-//		for (int i = 255; i>0; i--) {
-//			p_mealy_colors->red_value = 0;
-//			p_mealy_colors->green_value = 0;
-//			p_mealy_colors->blue_value = i;
-//
-//			if( (HAL_GetTick() - last_time) > 100 ) {
-//				RGB_set_color(p_mealy_rgb, p_mealy_colors);
-//				HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, 100, 100);
-//				last_time = HAL_GetTick();
-//			}
-//
-//		}
 
 
 	  // send data over USART3 TODO: change USART channel for BluePill
