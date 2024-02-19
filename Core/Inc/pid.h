@@ -13,10 +13,10 @@
 
 extern double sample_time;
 
-#define PID_MAX 600
-#define PID_MIN	-600
-#define INTEGRAL_MAX_GAIN 1000
-#define INTEGRAL_MIN_GAIN -1000
+#define PID_MAX 1000
+#define PID_MIN	-1000
+#define INTEGRAL_MAX_GAIN 600
+#define INTEGRAL_MIN_GAIN -600
 
 
 /**
@@ -40,7 +40,7 @@ void set_pid(pid_instance* pid_instance, uint16_t kp, uint16_t ki, uint16_t kd);
 /**
  * Compute PID
  */
-void apply_pid(pid_instance* pid_instance, int16_t input_error, float sample_rate);
+void apply_pid(pid_instance* pid_instance, int16_t input_error, unsigned long long sample_rate);
 
 
 #endif /* INC_PID_H_ */

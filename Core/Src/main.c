@@ -45,13 +45,13 @@
 
 #define ONE_G 				(9.81) 	// acceleration due to gravity
 #define LOOP_DELAY 			(10)	// infinite loop delay
-#define SPLASH_DELAY 		3000 	// interval when displaying splash screen
+#define SPLASH_DELAY 		2000 	// interval when displaying splash screen
 
 // PID defines
 #define MOTOR_REFERENCE 200	// define the motor reference speed
-#define motor_reference_angle 0 // the imu is placed such that a change in y axis drives the tilt
+float motor_reference_angle = -4; // the imu is placed such that a change in x axis drives the tilt
 //float sample_rate = 0.000125; // 0.125 ms TODO: use system clock to get sample rate
-uint16_t sampling_frequency = 8000000;
+unsigned long long sampling_frequency = 8000000;
 
 // motor defines
 #define LEFT_DC_MOTOR 0
@@ -99,6 +99,7 @@ UART_HandleTypeDef huart2;
 char msg[20] = "";
 char mpu_data[100];
 char data[40] = ""; // sd card test char array
+char debug[40];
 
 // create accelerometer struct
 MPU6050 acc;
@@ -356,19 +357,16 @@ int main(void)
   motor_start(RIGHT_DC_MOTOR, CW, 0);
 
   // set pID gains
-  set_pid(p_left_motor_instance, 0, 600, 0.8);
-  set_pid(p_right_motor_instance, 40, 600, 0.8);
-
-  set_pid(p_left_motor_instance, 40, 600, 0.8);
-  set_pid(p_right_motor_instance, 40, 600, 0.8);
+  set_pid(p_left_motor_instance, 90, 700, 0.5);
+  set_pid(p_right_motor_instance, 90, 700, 0.5);
 
   /*-------------------------INERTIAL MEASUREMENT UNIT FUNCTIONS--------------------------------*/
-  MPU6050_Initialise(&acc, &hi2c1); // TODO: check init status here
+  MPU6050_Initialise(&acc, &hi2c1); // TODO: check initialization status here
 
   // calibrate the sensor
   callibrate_sensor();
 
-  // initialise the sensor angles to known values
+  // initialize the sensor angles to known values
   set_last_read_angle_data(HAL_GetTick(), 0, 0, 0, 0, 0, 0);
 
   //-------------RGB---------------------
@@ -388,17 +386,15 @@ int main(void)
 	RGB_color_code white = WHITE;
 	RGB_color_code green = GREEN;
 	RGB_color_code red = RED;
-	RGB_color_code blue = BLUE;
 
 	p_mealy_colors->red_value = 0;
 	p_mealy_colors->green_value = 0;
 	p_mealy_colors->blue_value = 255;
 
-	// initalise OLED screen
+	// initialize OLED screen
 	SSD1306_Init();
 
 	sayHello();
-
 
   /* USER CODE END 2 */
 
@@ -465,28 +461,30 @@ int main(void)
 	  			);
 
 	  	// according to how i've mounted the MPU, i'm interested in x-axis angle
-//	  	sprintf(mpu_data,
-//	  			"x: %.2f, y: %.2f \r\n",
-//				p_filtered_angles->x_angle_estimate,
-//				p_filtered_angles->y_angle_estimate
-//	  			);
-
-//	  	sprintf(mpu_data, "%d\r\n", seconds);
+	  	sprintf(mpu_data,
+	  			"x: %.2f\r\n",
+				p_filtered_angles->x_angle_estimate
+	  			);
 
 	  	// run motors
-
 	  	apply_pid(p_left_motor_instance, motor_reference_angle - p_filtered_angles->x_angle_estimate,  sampling_frequency);
 	  	apply_pid(p_right_motor_instance, motor_reference_angle - p_filtered_angles->x_angle_estimate, sampling_frequency);
 
 	  	if(p_left_motor_instance->output < 0 ) {
 
-	  		motor_set_dir(LEFT_DC_MOTOR, CW);
-	  		motor_set_speed(LEFT_DC_MOTOR, p_left_motor_instance->output);
-	  	}
+//	  		sprintf(debug, "l-cw:%d\r\n", p_left_motor_instance->output);
+//	  		HAL_UART_Transmit(&huart2, (uint8_t*)debug, 20, 100);
 
+	  		motor_set_dir(LEFT_DC_MOTOR, CW);
+	  		motor_set_speed(LEFT_DC_MOTOR, p_left_motor_instance->output * -1);
+	  	}
 	  	if (p_right_motor_instance->output < 0 ) {
+
+//	  		sprintf(debug, "r-cw:%d\r\n", p_right_motor_instance->output);
+//	  		HAL_UART_Transmit(&huart2, (uint8_t*)debug, 20, 100);
+
 	  		motor_set_dir(RIGHT_DC_MOTOR, CW);
-	  		motor_set_speed(RIGHT_DC_MOTOR, p_right_motor_instance->output);
+	  		motor_set_speed(RIGHT_DC_MOTOR, p_right_motor_instance->output * -1);
 	  	}
 
 	  	if(p_left_motor_instance->output > 0 ) {
@@ -495,10 +493,14 @@ int main(void)
 			motor_set_speed(LEFT_DC_MOTOR, p_left_motor_instance->output);
 		}
 
-		if (p_right_motor_instance->output > 0 ) {
+	  	if (p_right_motor_instance->output > 0 ) {
+//	  		sprintf(debug, "r-ccw:%d\r\n", p_right_motor_instance->output);
+//	  		HAL_UART_Transmit(&huart2, (uint8_t*)debug, 20, 100);
+
 			motor_set_dir(RIGHT_DC_MOTOR, CCW);
 			motor_set_speed(RIGHT_DC_MOTOR, p_right_motor_instance->output);
 		}
+
 
 		//---------------RGB-----------------
 		// change pulse color after set time interval
@@ -516,13 +518,12 @@ int main(void)
 	  }
 
 	  if(seconds == 60) {
+
+		  // reset seconds counter every minute
 		  seconds = 0;
 	  }
 
-
-	  // send data over USART3 TODO: change USART channel for BluePill
-//	  HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, sizeof(mpu_data), 100);
-//	  HAL_UART_Transmit(&huart1, (uint8_t*) "Sending data...", strlen("Sending data..."), 100);
+	  HAL_UART_Transmit(&huart2, (uint8_t*)mpu_data, 100, 100);
 
   }
   /* USER CODE END 3 */

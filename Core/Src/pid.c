@@ -17,7 +17,7 @@ void set_pid(pid_instance* pid_instance, uint16_t kp, uint16_t ki, uint16_t kd){
 	pid_instance->d_gain = kd;
 }
 
-void apply_pid(pid_instance* pid_instance, int16_t input_error, float sample_rate) {
+void apply_pid(pid_instance* pid_instance, int16_t input_error, unsigned long long sample_rate) {
 	// sample rate is the frequency of the system
 
 	pid_instance->error_integral += input_error;
@@ -36,6 +36,11 @@ void apply_pid(pid_instance* pid_instance, int16_t input_error, float sample_rat
 
 	pid_instance->output = p + i + d;
 
+	// we only want positive value of PID
+//	if(pid_instance->output < 0) {
+//		pid_instance->output *= -1;
+//	}
+
 	/* cap gain values  */
 	if(pid_instance->output >= PID_MAX) {
 		pid_instance->output = PID_MAX;
@@ -44,6 +49,9 @@ void apply_pid(pid_instance* pid_instance, int16_t input_error, float sample_rat
 	if(pid_instance->output <= PID_MIN) {
 		pid_instance->output = PID_MIN;
 	}
+
+
+	pid_instance->last_error = input_error;
 
 }
 
