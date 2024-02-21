@@ -8,7 +8,7 @@ STM32F103C8T6 MCU. It is built for the sole reason of learning about control sys
 it is and can be applied to real robotics systems. This means that tuning the system, which is a major part of the bulding process,
 is considered throughly. 
 
-![3D Model]("./assets/assembly-design.png")
+![3D Model](./assets/assembly-design.png)
 
 ### Motivation 
 This robot was inspired by a recent video I stumbled up on youtube (https://youtu.be/-bQdrvSLqpg), where the maker was tuning the  robot's PID gains 
