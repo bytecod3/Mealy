@@ -73,9 +73,24 @@ So, to remove HF noise from the accelerometer, we use a low-pass filter. To remo
 ![complemetary-filter](assets/complementary-filter.png)
 
 #### PID
-Proportional Integral Derivative control algorithm is used in this robot. PID is a control method 
+Proportional Integral Derivative control algorithm is used in this robot. PID is a control method commonly used in the industry. It consists of three coefficients; proportional, intefral and derivative which are varied to get the desired response. 
+In simple terms, the tilt angle is read, then we compute the desired actuator output by calculating P, I and D values, then add them to compute the output which is then fed to the actuator.
+
+The code below shows the implementation of PID used in this project:
+
+![PID](assets/pid.png)
+
+```c main.c ``` showing how attach PID gains:
+
+![apply-pid](assets/pid-apply.png)
+
+For this robot, the PID value used to compute the actuator output is the tilt angle. 
+For more in-depth technical details about PID, you can visit https://www.ni.com/en/shop/labview/pid-theory-explained.html.
+
 
 #### Motor driving
+
+
 #### RGB
 #### OLED
 
