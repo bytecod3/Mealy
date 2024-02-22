@@ -435,7 +435,7 @@ int main(void)
 	    // compute angles from the accelerometer
 	  	float accel_angle_y = atan(-1 * p_SensorData->x_acc/sqrt(pow(p_SensorData->y_acc, 2) + pow(p_SensorData->z_acc, 2))) * RADS_TO_DEG;
 	  	float accel_angle_x = atan(p_SensorData->y_acc / sqrt( pow(p_SensorData->x_acc, 2) + pow(p_SensorData->z_acc, 2) )) * RADS_TO_DEG;
-	  	float accel_angle_z = 0;
+	  	//float accel_angle_z = 0;
 
 	  	float dt = (t_now - last_read_time) / 1000.0 ; // last read time in seconds
 
