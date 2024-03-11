@@ -89,6 +89,7 @@ For more in-depth technical details about PID, you can visit https://www.ni.com/
 
 
 #### Motor driving
+The motors used for this robot are controlled using L293D motor driver. The motors themselves are 2 Geared DC motors. These motors are powered by 12V from DC adapter. 
 
 
 #### RGB
@@ -96,6 +97,9 @@ For more in-depth technical details about PID, you can visit https://www.ni.com/
 
 
 ## 3D Model 
+
+## Schematics 
+Find The schematics and PCBs for this robot here: https://github.com/bytecod3/Mealy-PCB
 
 ## Future improvements
 
